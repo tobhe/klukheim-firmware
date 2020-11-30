@@ -38,16 +38,15 @@ int			target = 0;	// target state
 const int		fadestep = 20;
 unsigned long		oldmillis = 0;
 unsigned long		interval = INTERVAL_DEFAULT;
+float			humidity = 0;
+float			temperature = 0;
+
+/* DHT Stuff */
+#define INTERVAL_SENSOR	(2000)
+unsigned long	sensor_oldmillis;
 
 /* Initialize DHT sensor */
-#if 0
 DHTesp dht;
-#endif
-/*
-<form action="" method="post">
-    <button name="foo" value="upvote">Upvote</button>
-</form>
-*/
 
 void fade() {
 	int		oldstate = state;
@@ -71,45 +70,46 @@ void fade() {
 	}
 }
 
+void read_sensor() {
+	unsigned long	m = millis();
+
+	if (m - sensor_oldmillis > INTERVAL_SENSOR) {
+		humidity = dht.getHumidity();
+		temperature = dht.getTemperature();
+		sensor_oldmillis = m;
+	}
+}
+
 void handleLight() {
 	String	pwm = {};
-	String	message = "<form action=\"\" method=\"post\"> "
-	    "<button style=\"height:50%;width:50%\">An/Aus</button></form>\n";
+	String	message = {};
 
-	if (server.method() != HTTP_POST) {
-		message += "Licht ist: ";
-		message += state ? "AN" : "AUS";
-		message += "\n";
-		server.send(200, "text/html", message);
-	} else {
-		message += "Licht ist: ";
-		message += state ? "AN" : "AUS";
-		message += "\n";
+	Serial.println("Got request");
+	if (server.method() == HTTP_POST) {
 		if (!server.args()) {
 			target = target ? 0 : PWMRANGE;
 		}
 		for (uint8_t i = 0; i < server.args(); i++) {
 			if (server.argName(i) == "pwm") {
-				message += "pwm: " + server.arg(i) + "\n";
 				target = server.arg(i).toInt();
 			}
 			if (server.argName(i) == "interval") {
-				message += "pwm: " + server.arg(i) + "\n";
 				interval = server.arg(i).toInt();
 			}
-			message += "pwm: ";
-			message += target;
-			message += "\n";
 		}
-		server.send(200, "text/html", message);
 	}
+	message += "{";
+	message += "\"on\": \"" + String(!!target) + "\"";
+	message += ", \"temperature\": \"" + String(temperature) + "\"";
+	message += ", \"humidity\": \"" + String(humidity) + "\"";
+	message += "}";
+	server.sendHeader("Access-Control-Allow-Origin", "*");
+	server.send(200, "text/json", message);
 }
 
 void handleRoot() {
 	String message = "Test\n";
 #if 0
-	float humidity = dht.getHumidity();
-	float temperature = dht.getTemperature();
 	String message = "Sensor Wohnzimmer: ";
 
 	message += "humidity: ";
@@ -117,6 +117,7 @@ void handleRoot() {
 	message += ", temperature: ";
 	message += temperature;
 #endif
+	server.sendHeader("Access-Control-Allow-Origin", "*");
 	server.send(200, "text/plain", message);
 }
 
@@ -133,6 +134,7 @@ void handleNotFound() {
 		message += " " + server.argName(i) +
 		    ": " + server.arg(i) + "\n";
 	}
+	server.sendHeader("Access-Control-Allow-Origin", "*");
 	server.send(404, "text/plain", message);
 }
 
@@ -144,10 +146,8 @@ void setup(void) {
 	WiFi.begin(ssid, password);
 	Serial.println("");
 
-#if 0
 	// Initialize temperature sensor
-	dht.setup(16, DHTesp::DHT22);
-#endif
+	dht.setup(5, DHTesp::DHT22);
 
 	// Wait for connection
 	while (WiFi.status() != WL_CONNECTED) {
@@ -166,9 +166,6 @@ void setup(void) {
 
 	server.on("/", handleRoot);
 	server.on("/licht/", handleLight);
-	server.on("/inline", []() {
-		server.send(200, "text/plain", "this works as well");
-	});
 	server.onNotFound(handleNotFound);
 
 	server.begin();
@@ -177,6 +174,7 @@ void setup(void) {
 
 void loop(void) {
 	fade();
+	read_sensor();
 	server.handleClient();
 	MDNS.update();
 }
