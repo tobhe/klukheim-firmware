@@ -1,7 +1,7 @@
 #!/bin/ksh
 
-if [ -z $1 ]; then
-	command=$1
+if [ -n "$1" ]; then
+	command="$1"
 fi
 
 if [ "$command" = "flash" ]; then
