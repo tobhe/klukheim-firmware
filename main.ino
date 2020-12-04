@@ -109,15 +109,8 @@ void handleLight() {
 }
 
 void handleRoot() {
-	String message = "Test\n";
-#if HAS_LED
-	String message = "Sensor Wohnzimmer: ";
-
-	message += "humidity: ";
-	message += humidity;
-	message += ", temperature: ";
-	message += temperature;
-#endif
+	String message = "klukheim firmware\n\n";
+	message += "\t/licht/\tset/read sensors\n";
 	server.sendHeader("Access-Control-Allow-Origin", "*");
 	server.send(200, "text/plain", message);
 }
