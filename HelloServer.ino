@@ -84,7 +84,6 @@ void handleLight() {
 	String	pwm = {};
 	String	message = {};
 
-	Serial.println("Got request");
 	if (server.method() == HTTP_POST) {
 		if (!server.args()) {
 			target = target ? 0 : PWMRANGE;
@@ -99,9 +98,11 @@ void handleLight() {
 		}
 	}
 	message += "{";
-	message += "\"on\": \"" + String(!!target) + "\"";
-	message += ", \"temperature\": \"" + String(temperature) + "\"";
-	message += ", \"humidity\": \"" + String(humidity) + "\"";
+#if HAS_LED
+	message += "\"on\": \"" + String(!!target) + "\",";
+#endif
+	message += "\"temperature\": \"" + String(temperature) + "\",";
+	message += "\"humidity\": \"" + String(humidity) + "\"";
 	message += "}";
 	server.sendHeader("Access-Control-Allow-Origin", "*");
 	server.send(200, "text/json", message);
@@ -109,7 +110,7 @@ void handleLight() {
 
 void handleRoot() {
 	String message = "Test\n";
-#if 0
+#if HAS_LED
 	String message = "Sensor Wohnzimmer: ";
 
 	message += "humidity: ";
@@ -140,7 +141,7 @@ void handleNotFound() {
 
 void setup(void) {
 	pinMode(led, OUTPUT);
-	digitalWrite(led, state);
+	digitalWrite(led, 1);
 	Serial.begin(115200);
 	WiFi.mode(WIFI_STA);
 	WiFi.begin(ssid, password);
@@ -148,6 +149,9 @@ void setup(void) {
 
 	// Initialize temperature sensor
 	dht.setup(5, DHTesp::DHT22);
+
+	Serial.print("MAC: ");
+	Serial.println(WiFi.macAddress());
 
 	// Wait for connection
 	while (WiFi.status() != WL_CONNECTED) {
@@ -173,7 +177,9 @@ void setup(void) {
 }
 
 void loop(void) {
+#if HAS_LED
 	fade();
+#endif
 	read_sensor();
 	server.handleClient();
 	MDNS.update();
