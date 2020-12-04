@@ -3,7 +3,7 @@
 ## Requirements
 
 ```
-$ pkg_add arduino arduino-esp8266 makeesparduino
+# pkg_add arduino arduino-esp8266 makeesparduino
 ```
 
 ## Build
